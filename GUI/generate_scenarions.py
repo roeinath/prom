@@ -51,6 +51,8 @@ def generate_scenario(polygons_number=5, vertices_max_number=8, circles_number=5
         num = 1
         while os.path.isfile(scenarios_path + str(num) + ".json"):
             num += 1
+    else:
+        num = scenario_num
     with open(scenarios_path + str(num) + ".json", "w+") as file:
         json.dump(final_dict, file)
     with open(GUI_path + str(num) + ".json", "w+") as file:
