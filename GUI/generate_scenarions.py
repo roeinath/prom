@@ -17,7 +17,7 @@ def error(d):
 
 
 def generate_scenario(polygons_number=5, vertices_max_number=8, circles_number=5, radius_max=4,
-                      source=[0, 0], target=[15, 15]):
+                      source=[0, 0], target=[15, 15], scenario_num=0):
     final_dict = {"source": source, "target": target}
     polygons = []
     for _ in range(polygons_number):
@@ -43,13 +43,14 @@ def generate_scenario(polygons_number=5, vertices_max_number=8, circles_number=5
         circles.append(circle)
     final_dict["polygons"] = polygons
     final_dict["circles"] = circles
-    num = 1
     prefix_path = os.path.normpath(os.getcwd() + os.sep + os.pardir)
     print(prefix_path)
     scenarios_path = "./prom/scenarios/scenario_"
     GUI_path = "./prom/GUI/scenario_"
-    while os.path.isfile(scenarios_path + str(num) + ".json"):
-        num += 1
+    if scenario_num==0:
+        num = 1
+        while os.path.isfile(scenarios_path + str(num) + ".json"):
+            num += 1
     with open(scenarios_path + str(num) + ".json", "w+") as file:
         json.dump(final_dict, file)
     with open(GUI_path + str(num) + ".json", "w+") as file:
