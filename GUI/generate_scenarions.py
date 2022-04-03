@@ -57,7 +57,10 @@ def generate_scenario(polygons_number=5, vertices_max_number=8, circles_number=5
         json.dump(final_dict, file)
     with open(GUI_path + str(num) + ".json", "w+") as file:
         json.dump(final_dict, file)
-    os.remove(GUI_path + str(num - 1) + ".json")
+    try:
+        os.remove(GUI_path + str(num - 1) + ".json")
+    except:
+        pass
     return None
 
 
