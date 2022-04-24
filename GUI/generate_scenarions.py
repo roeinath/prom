@@ -16,8 +16,8 @@ def error(d):
     return np.random.normal(d, 1)
 
 
-def generate_scenario(polygons_number=5, vertices_max_number=8, circles_number=5, radius_max=4,
-                      source=[0, 0], target=[15, 15], scenario_num=0):
+def generate_scenario(polygons_number=5, vertices_max_number=8, circles_number=5, radius_max=4, radar_num=2, radar_radius=4,
+                      source=[0, 0], target=[15, 15]):
     final_dict = {"source": source, "target": target}
     polygons = []
     for _ in range(polygons_number):
@@ -41,26 +41,30 @@ def generate_scenario(polygons_number=5, vertices_max_number=8, circles_number=5
             center = [round_num(np.random.uniform(-2, 17)), round_num(np.random.uniform(-2, 17))]
         circle = [center, radius]
         circles.append(circle)
+
+    radars = []
+    for _ in range(radar_num):
+        center = [round_num(np.random.uniform(-2, 17)), round_num(np.random.uniform(-2, 17))]
+        radius = round_num(np.random.uniform(0, radar_radius))
+        while distance(center, source) <= radius or distance(center, target) <= radius:
+            center = [round_num(np.random.uniform(-2, 17)), round_num(np.random.uniform(-2, 17))]
+        circle = [center, radius]
+        radars.append(circle)
+
     final_dict["polygons"] = polygons
     final_dict["circles"] = circles
+    final_dict["radars"] = radars
+    num = 1
     prefix_path = os.path.normpath(os.getcwd() + os.sep + os.pardir)
-    print(prefix_path)
-    scenarios_path = "./prom/scenarios/scenario_"
-    GUI_path = "./prom/GUI/scenario_"
-    if scenario_num==0:
-        num = 1
-        while os.path.isfile(scenarios_path + str(num) + ".json"):
-            num += 1
-    else:
-        num = scenario_num
-    with open(scenarios_path + str(num) + ".json", "w+") as file:
+    scenarios_path = prefix_path + "\\scenarios\\scenario_"
+    GUI_path = prefix_path + "\\GUI\\scenario_"
+    while os.path.isfile(scenarios_path + str(num) + ".json"):
+        num += 1
+    with open(scenarios_path + str(num) + ".json", "w") as file:
         json.dump(final_dict, file)
-    with open(GUI_path + str(num) + ".json", "w+") as file:
+    with open(GUI_path + str(num) + ".json", "w") as file:
         json.dump(final_dict, file)
-    try:
-        os.remove(GUI_path + str(num - 1) + ".json")
-    except:
-        pass
+    os.remove(GUI_path + str(num - 1) + ".json")
     return None
 
 
@@ -73,4 +77,4 @@ def draw_polygon(points_list):
 
 
 if __name__ == "__main__":
-    generate_scenario(polygons_number=3, circles_number=3, vertices_max_number=10, radius_max=4)
+    generate_scenario(polygons_number=3, circles_number=2, vertices_max_number=7, radius_max=4, radar_num=2, radar_radius=4)
