@@ -10,6 +10,99 @@ import json
 from shapely.geometry import Polygon as S_Polygon
 from shapely.geometry import LineString
 import glob
+from shapely import geometry
+import numpy as np
+import math
+from circle_to_octagon import circle_to_polygon
+
+MIN_ANGLE = 4
+
+
+def circle_line_segment_intersection(circle_center, circle_radius, pt1, pt2, full_line=False, tangent_tol=1e-9):
+    """ Find the points at which a circle intersects a line-segment.  This can happen at 0, 1, or 2 points.
+
+    :param circle_center: The (x, y) location of the circle center
+    :param circle_radius: The radius of the circle
+    :param pt1: The (x, y) location of the first point of the segment
+    :param pt2: The (x, y) location of the second point of the segment
+    :param full_line: True to find intersections along full line - not just in the segment.  False will just return intersections within the segment.
+    :param tangent_tol: Numerical tolerance at which we decide the intersections are close enough to consider it a tangent
+    :return Sequence[Tuple[float, float]]: A list of length 0, 1, or 2, where each element is a point at which the circle intercepts a line segment.
+
+    """
+
+    (p1x, p1y), (p2x, p2y), (cx, cy) = pt1, pt2, circle_center
+    (x1, y1), (x2, y2) = (p1x - cx, p1y - cy), (p2x - cx, p2y - cy)
+    dx, dy = (x2 - x1), (y2 - y1)
+    dr = (dx ** 2 + dy ** 2) ** .5
+    big_d = x1 * y2 - x2 * y1
+    discriminant = circle_radius ** 2 * dr ** 2 - big_d ** 2
+
+    if discriminant < 0:  # No intersection between circle and line
+        return []
+    else:  # There may be 0, 1, or 2 intersections with the segment
+        intersections = [
+            (cx + (big_d * dy + sign * (-1 if dy < 0 else 1) * dx * discriminant ** .5) / dr ** 2,
+             cy + (-big_d * dx + sign * abs(dy) * discriminant ** .5) / dr ** 2)
+            for sign in ((1, -1) if dy < 0 else (-1, 1))]  # This makes sure the order along the segment is correct
+        if not full_line:  # If only considering the segment, filter out intersections that do not fall within the segment
+            fraction_along_segment = [(xi - p1x) / dx if abs(dx) > abs(dy) else (yi - p1y) / dy for xi, yi in
+                                      intersections]
+            intersections = [pt for pt, frac in zip(intersections, fraction_along_segment) if 0 <= frac <= 1]
+        if len(intersections) == 2 and abs(
+                discriminant) <= tangent_tol:  # If line is tangent to circle, return just one point (as both intersections have same location)
+            return [intersections[0]]
+        else:
+            return intersections
+
+
+def in_circle(center, radius, point):
+    if ((center[0] - point[0]) ** 2 + (center[1] - point[1]) ** 2) ** 0.5 <= radius:
+        return True
+    return False
+
+
+def angle_between(cent_p, pina, c):
+    ang = math.degrees(
+        abs(math.atan2(c[1] - pina[1], c[0] - pina[0]) - math.atan2(cent_p[1] - pina[1], cent_p[0] - pina[0])))
+    ang = ang % 360
+    ret = math.radians(ang)
+    if ret > math.pi:
+        ret -= math.pi
+    if ret > math.pi / 2:
+        ret = math.pi - ret
+    return ret
+
+
+def is_valid_radar(p1, p2, middle):
+    return angle_between(middle, p1, p2) > MIN_ANGLE and angle_between(middle, p2, p1) > MIN_ANGLE
+
+
+def all_radars_valid(radars, p1, p2):
+    if p1 == p2:
+        return True
+    n = len(radars)
+
+    for i in range(n):
+        line_radar_intersection = circle_line_segment_intersection(radars[i][0], radars[i][1], p1, p2)
+
+        if in_circle(radars[i][0], radars[i][1], p1) and in_circle(radars[i][0], radars[i][1], p2):
+            if not is_valid_radar(p1, p2, radars[i][0]):
+                return False
+
+        elif in_circle(radars[i][0], radars[i][1], p1):
+            if not is_valid_radar(p1, line_radar_intersection[0], radars[i][0]):
+                return False
+
+        elif in_circle(radars[i][0], radars[i][1], p2):
+            if not is_valid_radar(p2, line_radar_intersection[0], radars[i][0]):
+                return False
+
+        elif len(line_radar_intersection) == 2:
+            a, b = line_radar_intersection
+            if not is_valid_radar(a, b, radars[i][0]):
+                return False
+    return True
 
 
 def text_to_points(txt):
@@ -56,10 +149,19 @@ def draw_settings(ax, settings):
     p = PatchCollection(poly_patches, alpha=0.8, facecolors='red')
     ax.add_collection(p)
     circle_patches = []
+    radars_patches = []
     for circle in settings["circles"]:
         circle_patches.append(Circle(circle[0], circle[1], color="red"))
-    p = PatchCollection(circle_patches, alpha=0.8, facecolors='purple')
+
+    for radar in settings["radars"]:
+        radars_patches.append(Circle(radar[0], radar[1], color="purple"))
+
+    p = PatchCollection(circle_patches, alpha=0.8, facecolors='red')
     ax.add_collection(p)
+
+    p = PatchCollection(radars_patches, alpha=0.8, facecolors='purple')
+    ax.add_collection(p)
+
     ax.plot(settings["source"][0], settings["source"][1], 'ro', color="black")
     ax.plot(settings["target"][0], settings["target"][1], 'ro', color="black")
 
@@ -82,6 +184,7 @@ def plot(scenario_path, window, inputtxt, label):
     target = scenario["target"]
     polygons = scenario["polygons"]
     circles = scenario["circles"]
+    radars = scenario["radars"]
 
     source = list_to_tuple(source)
     target = list_to_tuple(target)
@@ -122,7 +225,7 @@ def plot(scenario_path, window, inputtxt, label):
     dx = (x_max - x_min) * 0.2
     dy = (y_max - y_min) * 0.2
     settings = {"source": source, "target": target, "polygons": polygons, "circles": circles, "x_low": x_min - dx,
-                "x_high": x_max + dx, "y_low": y_min - dy, "y_high": y_max + dy}
+                "x_high": x_max + dx, "y_low": y_min - dy, "y_high": y_max + dy, "radars": radars}
     draw_settings(ax, settings)
     if ord(inp[0]) != 10:
         if inp.replace('\n', '') == "None":
@@ -220,6 +323,8 @@ def valid_path(points, settings):
         point = points[i]
         next_point = points[i + 1]
         if not valid_line_total(point, next_point, settings):
+            return False
+        if not all_radars_valid(settings["radars"], point, next_point):
             return False
     return True
 
