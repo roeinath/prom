@@ -56,8 +56,8 @@ def generate_scenario(polygons_number=5, vertices_max_number=8, circles_number=5
     final_dict["radars"] = radars
     num = 1
     prefix_path = os.path.normpath(os.getcwd() + os.sep + os.pardir)
-    scenarios_path = prefix_path + "\\scenarios\\scenario_"
-    GUI_path = prefix_path + "\\GUI\\scenario_"
+    scenarios_path = "prom\\scenarios\\scenario_"
+    GUI_path = "prom\\GUI\\scenario_"
     while os.path.isfile(scenarios_path + str(num) + ".json"):
         num += 1
     with open(scenarios_path + str(num) + ".json", "w") as file:
