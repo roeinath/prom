@@ -1,3 +1,4 @@
+from json.encoder import py_encode_basestring
 import numpy as np
 import matplotlib.pyplot as plt
 import os.path
@@ -56,15 +57,19 @@ def generate_scenario(polygons_number=5, vertices_max_number=8, circles_number=5
     final_dict["radars"] = radars
     num = 1
     prefix_path = os.path.normpath(os.getcwd() + os.sep + os.pardir)
-    scenarios_path = "prom\\scenarios\\scenario_"
-    GUI_path = "prom\\GUI\\scenario_"
+    scenarios_path = "prom/scenarios/scenario_"
+    GUI_path = "prom/GUI/scenario_"
+    print('gg')
     while os.path.isfile(scenarios_path + str(num) + ".json"):
         num += 1
     with open(scenarios_path + str(num) + ".json", "w") as file:
         json.dump(final_dict, file)
     with open(GUI_path + str(num) + ".json", "w") as file:
         json.dump(final_dict, file)
-    os.remove(GUI_path + str(num - 1) + ".json")
+    try:
+      os.remove(GUI_path + str(num - 1) + ".json")
+    except:
+      pass
     return None
 
 
